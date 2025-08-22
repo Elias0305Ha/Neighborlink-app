@@ -2,39 +2,66 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import AddComment from './AddComment';
 import CommentList from './CommentList';
+import ClaimRequest from './ClaimRequest';
+import AssignmentManager from './AssignmentManager';
 
 function PostDetail({ socket, currentUserId, user }) {
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [comments, setComments] = useState([]);
+  const [showClaimForm, setShowClaimForm] = useState(false);
+  const [assignments, setAssignments] = useState([]);
   const { postId } = useParams();
   const navigate = useNavigate();
 
   // Fetch post details
-  useEffect(() => {
-    const fetchPost = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch(`http://localhost:5000/api/v1/posts/${postId}`);
-        const result = await response.json();
-        
-        if (result.success) {
-          setPost(result.data);
-        } else {
-          setError('Post not found');
-        }
-      } catch (err) {
-        setError('Error loading post');
-      } finally {
-        setLoading(false);
+  const fetchPost = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`http://localhost:5000/api/v1/posts/${postId}`);
+      const result = await response.json();
+      
+      if (result.success) {
+        setPost(result.data);
+        // Fetch assignments after post is loaded
+        fetchAssignments();
+      } else {
+        setError('Post not found');
       }
-    };
+    } catch (err) {
+      setError('Error loading post');
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     if (postId) {
       fetchPost();
     }
   }, [postId]);
+
+  // Fetch assignments for this post
+  const fetchAssignments = async () => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/v1/assignments/post/${postId}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        setAssignments(data.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch assignments:', err);
+    }
+  };
+
+  // Handle assignment updates
+  const handleAssignmentUpdated = () => {
+    fetchAssignments();
+    // Also refresh the post to get updated status
+    fetchPost();
+  };
 
   // Handle post deletion
   const handleDeletePost = async () => {
@@ -174,6 +201,102 @@ function PostDetail({ socket, currentUserId, user }) {
             </div>
           )}
         </div>
+
+        {/* Assignment Section - Only show for requests */}
+        {post.type === 'request' && (
+          <div className="bg-white p-6 rounded-lg shadow-md mb-6">
+            <h3 className="text-xl font-semibold text-gray-800 mb-4">Help This Request</h3>
+            
+            {/* Show different content based on post status and user */}
+            {post.status === 'open' && (
+              <div>
+                {user && post.createdBy && user._id !== post.createdBy._id ? (
+                  <div>
+                    <p className="text-gray-600 mb-4">
+                      Can you help with this request? Let the requester know how you can assist.
+                    </p>
+                    <button
+                      onClick={() => setShowClaimForm(true)}
+                      className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 font-medium"
+                    >
+                      I Can Help
+                    </button>
+                  </div>
+                ) : user && post.createdBy && user._id === post.createdBy._id ? (
+                  <p className="text-gray-600">
+                    This is your request. Wait for neighbors to offer help!
+                  </p>
+                ) : (
+                  <p className="text-gray-600">
+                    Sign in to offer help with this request.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {post.status === 'in_progress' && (
+              <div className="text-center py-4">
+                <div className="inline-flex items-center px-4 py-2 bg-blue-100 text-blue-800 rounded-full">
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Work in Progress
+                </div>
+                <p className="text-gray-600 mt-2">Someone is currently helping with this request.</p>
+              </div>
+            )}
+
+            {post.status === 'completed' && (
+              <div className="text-center py-4">
+                <div className="inline-flex items-center px-4 py-2 bg-green-100 text-green-800 rounded-full">
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Completed
+                </div>
+                <p className="text-gray-600 mt-2">This request has been completed.</p>
+              </div>
+            )}
+
+            {post.status === 'cancelled' && (
+              <div className="text-center py-4">
+                <div className="inline-flex items-center px-4 py-2 bg-red-100 text-red-800 rounded-full">
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  Cancelled
+                </div>
+                <p className="text-gray-600 mt-2">This request was cancelled.</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Assignment Management - Show for post owner */}
+        {post.type === 'request' && user && post.createdBy && user._id === post.createdBy._id && (
+          <div className="mb-6">
+            <AssignmentManager 
+              post={post} 
+              onAssignmentUpdated={handleAssignmentUpdated}
+              user={user}
+            />
+          </div>
+        )}
+
+        {/* Claim Request Modal */}
+        {showClaimForm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <ClaimRequest
+              post={post}
+              onClaimSubmitted={(assignment) => {
+                setShowClaimForm(false);
+                handleAssignmentUpdated();
+              }}
+              onClose={() => setShowClaimForm(false)}
+              user={user}
+            />
+          </div>
+        )}
 
         {/* Comments Section */}
         <div className="bg-white p-6 rounded-lg shadow-md">

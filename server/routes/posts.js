@@ -33,7 +33,13 @@ router.post('/', auth, (req, res, next) => {
 // Get all posts (public)
 router.get('/', async (req, res) => {
   try {
-    const posts = await Post.find().populate('createdBy', 'name email profilePicture');
+    const posts = await Post.find()
+      .populate('createdBy', 'name email profilePicture')
+      .populate({
+        path: 'assignments',
+        match: { status: { $in: ['pending', 'approved', 'in_progress'] } },
+        populate: { path: 'helper', select: 'name profilePicture' }
+      });
     res.json({ success: true, data: posts });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Server error' });
@@ -57,7 +63,13 @@ router.get('/user/:userId', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const postId = req.params.id;
-    const post = await Post.findById(postId).populate('createdBy', 'name email');
+    const post = await Post.findById(postId)
+      .populate('createdBy', 'name email')
+      .populate({
+        path: 'assignments',
+        match: { status: { $in: ['pending', 'approved', 'in_progress'] } },
+        populate: { path: 'helper', select: 'name profilePicture' }
+      });
     
     if (!post) {
       return res.status(404).json({ 

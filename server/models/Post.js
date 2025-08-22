@@ -15,6 +15,11 @@ const PostSchema = new mongoose.Schema({
     enum: ['request', 'offer'], // Only allow these two values
     required: [true, 'Please specify if this is a request or offer'],
   },
+  status: {
+    type: String,
+    enum: ['open', 'in_progress', 'completed', 'cancelled'],
+    default: 'open',
+  },
   category: {
     type: String,
     default: 'general',
@@ -39,5 +44,16 @@ const PostSchema = new mongoose.Schema({
 }, {
   timestamps: true, // Adds createdAt and updatedAt fields automatically
 });
+
+// Virtual for assignments
+PostSchema.virtual('assignments', {
+  ref: 'Assignment',
+  localField: '_id',
+  foreignField: 'post'
+});
+
+// Ensure virtual fields are serialized
+PostSchema.set('toJSON', { virtuals: true });
+PostSchema.set('toObject', { virtuals: true });
 
 module.exports = mongoose.model('Post', PostSchema); 

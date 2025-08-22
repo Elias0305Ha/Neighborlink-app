@@ -6,6 +6,8 @@ const authRoutes = require('./routes/auth'); // Import our auth routes
 const postsRoutes = require('./routes/posts'); // Import posts routes
 const commentRoutes = require('./routes/comments'); // Import comment routes
 const userRoutes = require('./routes/users'); // Import user routes
+const assignmentRoutes = require('./routes/assignments'); // Import assignment routes
+console.log('Assignment routes loaded:', typeof assignmentRoutes);
 const app = express();
 
 // Import Socket.IO
@@ -23,6 +25,9 @@ console.log("Starting NeighborLink server...");
 
 app.use(cors());
 app.use(express.json());
+
+// Mount assignment routes after database connection
+app.use('/api/v1/assignments', assignmentRoutes);
 
 // Multer configuration for file uploads
 const storage = multer.diskStorage({
@@ -58,6 +63,11 @@ app.use('/api/v1/auth', authRoutes); // Use the auth routes for this URL
 app.use('/api/v1/posts', postsRoutes); // Use the posts routes for this URL
 app.use('/api/v1/comments', commentRoutes); // Use the comments routes for this URL
 app.use('/api/v1/users', userRoutes); // Use the user routes for this URL
+
+// Test route for assignments
+app.get('/test-assignments', (req, res) => {
+  res.json({ message: 'Assignments endpoint test - working!' });
+});
 
 app.get("/", (req, res) => {
   console.log("Received request to /");

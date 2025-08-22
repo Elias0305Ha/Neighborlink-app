@@ -7,7 +7,9 @@ import CreatePost from './CreatePost';
 import EditPost from './EditPost';
 import PostDetail from './PostDetail';
 import UserProfile from './UserProfile';
+import MyAssignments from './MyAssignments';
 import './App.css';
+import NavigationHeader from './components/NavigationHeader';
 
 function App() {
   return (
@@ -273,23 +275,7 @@ function AppContent() {
         {/* Main Feed Route */}
         <Route path="/" element={
           <div className="min-h-screen bg-gray-100">
-            {/* Header */}
-            <div className="bg-white shadow-sm border-b">
-              <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
-                <h1 className="text-2xl font-bold text-gray-800">NeighborLink</h1>
-                <div className="flex items-center space-x-4">
-                  <span className="text-gray-600">
-                    Welcome, {user ? user.name : 'User'}!
-                  </span>
-                  <button
-                    className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
-                    onClick={handleLogout}
-                  >
-                    Logout
-                  </button>
-                </div>
-              </div>
-            </div>
+            <NavigationHeader user={user} onLogout={handleLogout} onSearch={setSearchQuery} />
 
             {/* Main Content */}
             <div className="max-w-6xl mx-auto px-4 py-8">
@@ -422,13 +408,28 @@ function AppContent() {
                           <div className="flex-1">
                             <div className="flex items-start justify-between">
                               <h4 className="font-bold text-lg text-gray-800">{post.title}</h4>
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                post.type === 'request' 
-                                  ? 'bg-orange-100 text-orange-800' 
-                                  : 'bg-green-100 text-green-800'
-                              }`}>
-                                {post.type === 'request' ? 'Request' : 'Offer'}
-                              </span>
+                              <div className="flex flex-col items-end space-y-1">
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  post.type === 'request' 
+                                    ? 'bg-orange-100 text-orange-800' 
+                                    : 'bg-green-100 text-green-800'
+                                }`}>
+                                  {post.type === 'request' ? 'Request' : 'Offer'}
+                                </span>
+                                {post.type === 'request' && post.status && (
+                                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                    post.status === 'open' ? 'bg-green-100 text-green-800' :
+                                    post.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                                    post.status === 'completed' ? 'bg-gray-100 text-gray-800' :
+                                    'bg-red-100 text-red-800'
+                                  }`}>
+                                    {post.status === 'open' ? 'Open' :
+                                     post.status === 'in_progress' ? 'In Progress' :
+                                     post.status === 'completed' ? 'Completed' :
+                                     'Cancelled'}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                             <div className="flex items-center text-xs text-gray-500 mt-1">
                               <span 
@@ -488,7 +489,10 @@ function AppContent() {
         <Route path="/post/:postId" element={<PostDetail socket={socket} currentUserId={user?._id} user={user} />} />
 
         {/* User Profile Route */}
-                      <Route path="/user/:userId" element={<UserProfile currentUserId={user?._id} user={user} socket={socket} />} />
+        <Route path="/user/:userId" element={<UserProfile currentUserId={user?._id} user={user} socket={socket} />} />
+
+        {/* My Assignments Route */}
+        <Route path="/my-assignments" element={<MyAssignments user={user} />} />
 
         {/* Edit Post Route */}
         <Route path="/edit/:postId" element={<EditPost post={editingPost} onPostUpdated={handlePostUpdated} onCancel={() => navigate('/')} />} />
