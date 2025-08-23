@@ -151,6 +151,8 @@ function AppContent() {
       filtered = filtered.filter(post => post.type === selectedType);
     }
     
+
+    
     // Sort
     if (sortBy === 'newest') {
       filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
@@ -159,7 +161,7 @@ function AppContent() {
     }
     
     return filtered;
-  }, [posts, searchQuery, selectedCategory, selectedType, sortBy]);
+  }, [posts, searchQuery, selectedCategory, selectedType, sortBy, user]);
 
   useEffect(() => {
     fetchPosts();
@@ -178,6 +180,8 @@ function AppContent() {
     const token = localStorage.getItem('token');
     if (token) fetchUserInfo(token);
   };
+
+
 
   // Send user ID to Socket.IO when user info is fetched
   useEffect(() => {
@@ -282,18 +286,27 @@ function AppContent() {
         {/* Main Feed Route */}
         <Route path="/" element={
           <div className="min-h-screen bg-gray-100">
-            <NavigationHeader user={user} onLogout={handleLogout} onSearch={setSearchQuery} />
+            <NavigationHeader user={user} onLogout={handleLogout} />
 
             {/* Main Content */}
             <div className="max-w-6xl mx-auto px-4 py-8">
-              {/* Create Post Section */}
-              <div className="mb-8 flex justify-center">
+              
+
+                        {/* Create Post Section */}
+            <div className="mb-8 flex justify-center">
+              <div className="text-center">
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">Need Help or Want to Help?</h2>
+                <p className="text-gray-600 mb-6">Create a post to request help or offer your skills to neighbors</p>
+                
                 {!showCreatePost && !editingPost ? (
                   <button
                     onClick={() => setShowCreatePost(true)}
-                    className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium"
+                    className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium shadow-md hover:shadow-lg transition-all duration-200"
                   >
-                    + Create New Post
+                    <svg className="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Create New Post
                   </button>
                 ) : showCreatePost ? (
                   <div className="w-full max-w-md">
@@ -317,10 +330,22 @@ function AppContent() {
                   </div>
                 ) : null}
               </div>
+            </div>
 
                         {/* Search and Filter Section */}
           <div className="w-full mb-6">
             <div className="bg-white p-4 rounded-lg shadow-md">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Find Help in Your Neighborhood</h2>
+              {(selectedCategory || selectedType || searchQuery) && (
+                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-800">
+                    <span className="font-medium">Active filters:</span>
+                    {searchQuery && <span className="ml-2">Search: "{searchQuery}"</span>}
+                    {selectedCategory && <span className="ml-2">Category: {selectedCategory}</span>}
+                    {selectedType && <span className="ml-2">Type: {selectedType}</span>}
+                  </p>
+                </div>
+              )}
               {/* Search Bar */}
               <div className="mb-4">
                 <input
@@ -333,7 +358,7 @@ function AppContent() {
               </div>
               
               {/* Filters */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 {/* Category Filter */}
                 <select
                   value={selectedCategory}
@@ -370,6 +395,19 @@ function AppContent() {
                   <option value="oldest">Oldest First</option>
                   <option value="mostCommented">Most Commented</option>
                 </select>
+                
+                {/* Clear Filters Button */}
+                <button
+                  onClick={() => {
+                    setSelectedCategory('');
+                    setSelectedType('');
+                    setSearchQuery('');
+                    setSortBy('newest');
+                  }}
+                  className="p-3 border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                >
+                  Clear Filters
+                </button>
               </div>
             </div>
           </div>
@@ -499,10 +537,65 @@ function AppContent() {
         <Route path="/user/:userId" element={<UserProfile currentUserId={user?._id} user={user} socket={socket} />} />
 
         {/* My Assignments Route */}
-        <Route path="/my-assignments" element={<MyAssignments user={user} />} />
+        <Route path="/my-assignments" element={
+          <div className="min-h-screen bg-gray-100">
+            <NavigationHeader user={user} onLogout={handleLogout} />
+            <MyAssignments user={user} />
+          </div>
+        } />
 
         {/* Edit Post Route */}
         <Route path="/edit/:postId" element={<EditPost post={editingPost} onPostUpdated={handlePostUpdated} onCancel={() => navigate('/')} />} />
+        
+        {/* Community Route */}
+        <Route path="/community" element={
+          <div className="min-h-screen bg-gray-100">
+            <NavigationHeader user={user} onLogout={handleLogout} />
+            <div className="max-w-6xl mx-auto px-4 py-8">
+              <div className="bg-white rounded-lg shadow-md p-8 text-center">
+                <h1 className="text-3xl font-bold text-gray-900 mb-4">Community</h1>
+                <p className="text-lg text-gray-600 mb-6">Connect with your neighbors and build a stronger community together.</p>
+                <div className="grid md:grid-cols-2 gap-6 max-w-2xl mx-auto">
+                  <div className="bg-blue-50 p-6 rounded-lg">
+                    <h3 className="text-xl font-semibold text-blue-900 mb-2">Neighborhood Events</h3>
+                    <p className="text-blue-700">Stay updated on local events, meetings, and activities in your area.</p>
+                  </div>
+                  <div className="bg-green-50 p-6 rounded-lg">
+                    <h3 className="text-xl font-semibold text-green-900 mb-2">Local Resources</h3>
+                    <p className="text-green-700">Discover helpful resources, services, and information about your neighborhood.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        } />
+        
+        {/* About Route */}
+        <Route path="/about" element={
+          <div className="min-h-screen bg-gray-100">
+            <NavigationHeader user={user} onLogout={handleLogout} />
+            <div className="max-w-6xl mx-auto px-4 py-8">
+              <div className="bg-white rounded-lg shadow-md p-8 text-center">
+                <h1 className="text-3xl font-bold text-gray-900 mb-4">About NeighborLink</h1>
+                <p className="text-lg text-gray-600 mb-6">Building stronger neighborhoods through mutual support and community connection.</p>
+                <div className="max-w-3xl mx-auto text-left space-y-6">
+                  <div>
+                    <h3 className="text-xl font-semibold text-gray-900 mb-2">Our Mission</h3>
+                    <p className="text-gray-600">To create a platform where neighbors can easily help each other, share resources, and build meaningful connections that strengthen our communities.</p>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold text-gray-900 mb-2">How It Works</h3>
+                    <p className="text-gray-600">Post requests for help or offer your skills to neighbors. Connect, collaborate, and make your neighborhood a better place to live.</p>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold text-gray-900 mb-2">Safety & Trust</h3>
+                    <p className="text-gray-600">We prioritize community safety and trust. All users are verified members of the neighborhood, creating a secure environment for mutual support.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        } />
       </Routes>
     );
   }

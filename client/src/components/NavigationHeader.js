@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import NotificationCenter from './NotificationCenter';
 
-function NavigationHeader({ user, onLogout, onSearch }) {
+function NavigationHeader({ user, onLogout }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
-  const [searchText, setSearchText] = useState('');
   const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Fetch unread notification count
   useEffect(() => {
@@ -51,21 +51,13 @@ function NavigationHeader({ user, onLogout, onSearch }) {
 
   const navigationItems = [
     { name: 'Home', to: '/' },
-    { name: 'Posts', to: '/' },
-    // Routes like "/community" and "/about" are not defined yet in this app,
-    // so we keep them pointing to home for now to avoid dead routes.
-    { name: 'Community', to: '/' },
-    { name: 'About', to: '/' },
+    { name: 'Community', to: '/community' },
+    { name: 'About', to: '/about' },
+    { name: 'My Posts', to: '/?filter=my-posts' },
+    { name: 'My Assignments', to: '/my-assignments' },
   ];
 
-  const handleSearchSubmit = (event) => {
-    event.preventDefault();
-    if (onSearch) {
-      onSearch(searchText);
-    }
-    // Optionally navigate home where the posts are listed
-    navigate('/');
-  };
+
 
   const getUserInitials = (fullName) => {
     if (!fullName || typeof fullName !== 'string') return 'U';
@@ -86,42 +78,41 @@ function NavigationHeader({ user, onLogout, onSearch }) {
             <span className="text-xl font-bold text-gray-900">NeighborLink</span>
           </div>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-6">
-            {navigationItems.map((item) => (
-              <Link
-                key={item.name}
-                to={item.to}
-                className="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors"
-              >
-                {item.name}
-              </Link>
-            ))}
-          </nav>
+                     {/* Desktop Navigation */}
+           <nav className="hidden md:flex items-center space-x-6">
+                           {navigationItems.map((item) => {
+                const isActive = item.to === '/' ? 
+                  location.pathname === '/' && !location.search :
+                  location.pathname === item.to;
+                
+                return (
+                  <Link
+                    key={item.name}
+                    to={item.to}
+                    className={`text-sm font-medium transition-colors ${
+                      isActive 
+                        ? 'text-blue-600 font-semibold' 
+                        : 'text-gray-500 hover:text-gray-900'
+                    }`}
+                  >
+                    {item.name}
+                  </Link>
+                );
+              })}
+           </nav>
 
-          {/* Search Bar (desktop) */}
-          <div className="hidden lg:flex flex-1 max-w-md mx-8">
-            <form onSubmit={handleSearchSubmit} className="w-full">
-              <div className="relative w-full">
-                <input
-                  type="search"
-                  placeholder="Search neighbors, posts..."
-                  className="w-full pl-10 pr-4 h-9 bg-gray-100 border border-transparent rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={searchText}
-                  onChange={(e) => setSearchText(e.target.value)}
-                />
-                <svg
-                  className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 103.75 3.75a7.5 7.5 0 0012.9 12.9z"></path>
-                </svg>
-              </div>
-            </form>
-          </div>
+                     {/* Create Post Button */}
+           <div className="hidden md:flex items-center">
+             <button
+               onClick={() => navigate('/create-post')}
+               className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+             >
+               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+               </svg>
+               Create Post
+             </button>
+           </div>
 
           {/* Right side: user + mobile toggles */}
           <div className="flex items-center space-x-2">
@@ -153,22 +144,21 @@ function NavigationHeader({ user, onLogout, onSearch }) {
               </button>
             )}
 
-            {/* Mobile search button (no-op; search shown in mobile menu) */}
-            <button
-              className="lg:hidden h-9 w-9 p-0 rounded-md hover:bg-gray-100 flex items-center justify-center"
-              aria-label="Open search"
-              onClick={() => setIsMobileMenuOpen((v) => !v)}
-            >
-              <svg
-                className="h-4 w-4 text-gray-700"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 103.75 3.75a7.5 7.5 0 0012.9 12.9z"></path>
-              </svg>
-            </button>
+                         {/* Create Post Button (Mobile) */}
+             <button
+               className="md:hidden h-9 w-9 p-0 rounded-md hover:bg-gray-100 flex items-center justify-center"
+               aria-label="Create Post"
+               onClick={() => navigate('/create-post')}
+             >
+               <svg
+                 className="h-4 w-4 text-blue-600"
+                 fill="none"
+                 stroke="currentColor"
+                 viewBox="0 0 24 24"
+               >
+                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+               </svg>
+             </button>
 
             {/* Profile dropdown */}
             <div className="relative profile-dropdown">
@@ -259,33 +249,25 @@ function NavigationHeader({ user, onLogout, onSearch }) {
           </div>
         </div>
 
-        {/* Mobile Menu */}
-        {isMobileMenuOpen && (
-          <div className="md:hidden border-t bg-white">
-            <div className="px-2 pt-2 pb-3 space-y-1">
-              {/* Mobile Search */}
-              <div className="px-3 py-2">
-                <form onSubmit={handleSearchSubmit}>
-                  <div className="relative">
-                    <input
-                      type="search"
-                      placeholder="Search neighbors, posts..."
-                      className="w-full pl-10 pr-4 h-9 bg-gray-100 border border-transparent rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      value={searchText}
-                      onChange={(e) => setSearchText(e.target.value)}
-                    />
-                    <svg
-                      className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 103.75 3.75a7.5 7.5 0 0012.9 12.9z"></path>
-                    </svg>
-                  </div>
-                </form>
-              </div>
+                 {/* Mobile Menu */}
+         {isMobileMenuOpen && (
+           <div className="md:hidden border-t bg-white">
+             <div className="px-2 pt-2 pb-3 space-y-1">
+               {/* Mobile Create Post Button */}
+               <div className="px-3 py-2">
+                 <button
+                   onClick={() => {
+                     setIsMobileMenuOpen(false);
+                     navigate('/create-post');
+                   }}
+                   className="w-full inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                 >
+                   <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                   </svg>
+                   Create Post
+                 </button>
+               </div>
 
               {/* Mobile Navigation Items */}
               {navigationItems.map((item) => (
