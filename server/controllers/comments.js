@@ -1,5 +1,6 @@
 const Comment = require('../models/Comment');
 const Post = require('../models/Post');
+const { notifyNewComment } = require('../services/notificationService');
 
 // @desc    Create a comment
 // @route   POST /api/v1/comments
@@ -22,11 +23,14 @@ const createComment = async (req, res) => {
 
     // Populate the createdBy field to get user info
     await comment.populate('createdBy', 'name');
+    await comment.populate('post', 'title createdBy');
 
-    // Notify ONLY the post owner about the new comment
+    // Create notification for the post owner
     const io = req.app.get('io');
     const userConnections = req.app.get('userConnections');
-    
+    await notifyNewComment(comment, io, userConnections);
+
+    // Also emit real-time comment update
     if (io && userConnections) {
       const postOwnerSocketId = userConnections.get(post.createdBy.toString());
       

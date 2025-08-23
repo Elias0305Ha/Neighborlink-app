@@ -2,6 +2,12 @@ const express = require('express');
 const Assignment = require('../models/Assignment');
 const Post = require('../models/Post');
 const auth = require('../middleware/auth');
+const { 
+  notifyAssignmentClaimed, 
+  notifyAssignmentApproved, 
+  notifyAssignmentRejected,
+  notifyAssignmentStatusChanged 
+} = require('../services/notificationService');
 
 const router = express.Router();
 
@@ -78,6 +84,11 @@ router.post('/', auth, async (req, res) => {
     // Populate the helper info for the response
     await assignment.populate('helper', 'name profilePicture');
     
+    // Create notification for the post owner
+    const io = req.app.get('io');
+    const userConnections = req.app.get('userConnections');
+    await notifyAssignmentClaimed(assignment, io, userConnections);
+    
     res.status(201).json({ success: true, data: assignment });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
@@ -149,10 +160,21 @@ router.put('/:id/approve', auth, async (req, res) => {
       await assignment.save();
       await assignment.post.save();
       
+      // Create notification for the helper
+      const io = req.app.get('io');
+      const userConnections = req.app.get('userConnections');
+      await notifyAssignmentApproved(assignment, io, userConnections);
+      
       res.json({ success: true, data: assignment });
     } else {
       // Reject the claim
       await Assignment.findByIdAndDelete(assignmentId);
+      
+      // Create notification for the helper
+      const io = req.app.get('io');
+      const userConnections = req.app.get('userConnections');
+      await notifyAssignmentRejected(assignment, io, userConnections);
+      
       res.json({ 
         success: true, 
         message: 'Claim rejected successfully' 
@@ -217,6 +239,11 @@ router.put('/:id/status', auth, async (req, res) => {
     }
     
     await assignment.save();
+    
+    // Create notification for status changes
+    const io = req.app.get('io');
+    const userConnections = req.app.get('userConnections');
+    await notifyAssignmentStatusChanged(assignment, assignment.status, status, io, userConnections);
     
     res.json({ success: true, data: assignment });
   } catch (err) {

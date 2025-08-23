@@ -7,6 +7,7 @@ const postsRoutes = require('./routes/posts'); // Import posts routes
 const commentRoutes = require('./routes/comments'); // Import comment routes
 const userRoutes = require('./routes/users'); // Import user routes
 const assignmentRoutes = require('./routes/assignments'); // Import assignment routes
+const notificationRoutes = require('./routes/notifications'); // Import notification routes
 console.log('Assignment routes loaded:', typeof assignmentRoutes);
 const app = express();
 
@@ -28,6 +29,9 @@ app.use(express.json());
 
 // Mount assignment routes after database connection
 app.use('/api/v1/assignments', assignmentRoutes);
+
+// Mount notification routes
+app.use('/api/v1/notifications', notificationRoutes);
 
 // Multer configuration for file uploads
 const storage = multer.diskStorage({

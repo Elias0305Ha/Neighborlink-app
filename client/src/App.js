@@ -211,6 +211,13 @@ function AppContent() {
         });
       });
 
+      // Handle new notifications
+      socket.on('new-notification', (notification) => {
+        console.log('New notification received:', notification);
+        // You can add notification handling here if needed
+        // For now, we'll just log it
+      });
+
       return () => {
         socket.off('profile-picture-updated');
       };

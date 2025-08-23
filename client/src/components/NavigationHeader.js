@@ -1,11 +1,53 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import NotificationCenter from './NotificationCenter';
 
 function NavigationHeader({ user, onLogout, onSearch }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [searchText, setSearchText] = useState('');
+  const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const navigate = useNavigate();
+
+  // Fetch unread notification count
+  useEffect(() => {
+    if (user) {
+      fetchUnreadCount();
+    }
+  }, [user]);
+
+  // Close profile dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (isProfileMenuOpen && !event.target.closest('.profile-dropdown')) {
+        setIsProfileMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isProfileMenuOpen]);
+
+  const fetchUnreadCount = async () => {
+    try {
+      const response = await fetch('/api/v1/notifications/unread-count', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setUnreadCount(data.data.count);
+      }
+    } catch (err) {
+      console.error('Failed to fetch unread count:', err);
+    }
+  };
 
   const navigationItems = [
     { name: 'Home', to: '/' },
@@ -83,6 +125,34 @@ function NavigationHeader({ user, onLogout, onSearch }) {
 
           {/* Right side: user + mobile toggles */}
           <div className="flex items-center space-x-2">
+            {/* Notification Bell */}
+            {user && (
+              <button
+                onClick={() => setIsNotificationCenterOpen(true)}
+                className="relative h-9 w-9 p-0 rounded-md hover:bg-gray-100 flex items-center justify-center"
+                aria-label="Notifications"
+              >
+                <svg
+                  className="h-5 w-5 text-gray-700"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 17h5l-5 5v-5zM10 3a6 6 0 00-6 6v7h12V9a6 6 0 00-6-6z"
+                  />
+                </svg>
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+            )}
+
             {/* Mobile search button (no-op; search shown in mobile menu) */}
             <button
               className="lg:hidden h-9 w-9 p-0 rounded-md hover:bg-gray-100 flex items-center justify-center"
@@ -101,7 +171,7 @@ function NavigationHeader({ user, onLogout, onSearch }) {
             </button>
 
             {/* Profile dropdown */}
-            <div className="relative">
+            <div className="relative profile-dropdown">
               <button
                 className="h-9 w-9 rounded-full hover:bg-gray-100 flex items-center justify-center"
                 onClick={() => setIsProfileMenuOpen((v) => !v)}
@@ -232,6 +302,13 @@ function NavigationHeader({ user, onLogout, onSearch }) {
           </div>
         )}
       </div>
+
+      {/* Notification Center */}
+      <NotificationCenter
+        isOpen={isNotificationCenterOpen}
+        onClose={() => setIsNotificationCenterOpen(false)}
+        user={user}
+      />
     </header>
   );
 }
