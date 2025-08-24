@@ -17,7 +17,7 @@ const ClaimRequest = ({ post, onClaimSubmitted, onClose, user }) => {
     setError('');
 
     try {
-      const response = await fetch('/api/v1/assignments', {
+      const response = await fetch('http://localhost:5000/api/v1/assignments', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

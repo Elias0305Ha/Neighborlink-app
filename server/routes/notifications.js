@@ -54,6 +54,17 @@ router.put('/:id/read', auth, async (req, res) => {
       });
     }
 
+    // Emit real-time update via Socket.IO
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('notification-updated', {
+        action: 'marked-read',
+        notificationId: req.params.id,
+        userId: req.user.userId
+      });
+      console.log('Real-time notification update sent: marked-read');
+    }
+
     res.json({ success: true, data: notification });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Failed to mark notification as read' });
@@ -67,6 +78,16 @@ router.put('/mark-all-read', auth, async (req, res) => {
       { recipient: req.user.userId, read: false },
       { read: true }
     );
+
+    // Emit real-time update via Socket.IO
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('notification-updated', {
+        action: 'marked-all-read',
+        userId: req.user.userId
+      });
+      console.log('Real-time notification update sent: marked-all-read');
+    }
 
     res.json({ success: true, message: 'All notifications marked as read' });
   } catch (err) {

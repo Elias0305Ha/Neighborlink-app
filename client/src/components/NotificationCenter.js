@@ -1,13 +1,65 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const NotificationCenter = ({ isOpen, onClose, user }) => {
+const NotificationCenter = ({ isOpen, onClose, user, socket }) => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   const navigate = useNavigate();
+
+  // Click outside handler to close notification center
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleClickOutside = (event) => {
+      if (!event.target.closest('.notification-center')) {
+        onClose();
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen, onClose]);
+
+  // Real-time notification updates
+  useEffect(() => {
+    if (!socket) return;
+
+    // Listen for new notifications
+    socket.on('new-notification', (notification) => {
+      console.log('New notification received:', notification);
+      setNotifications(prev => [notification, ...prev]);
+      setUnreadCount(prev => prev + 1);
+    });
+
+    // Listen for notification updates (when marked as read)
+    socket.on('notification-updated', (data) => {
+      console.log('Notification update received:', data);
+      
+      if (data.action === 'marked-read' && data.userId === user?._id) {
+        setNotifications(prev => 
+          prev.map(notif => 
+            notif._id === data.notificationId 
+              ? { ...notif, read: true }
+              : notif
+          )
+        );
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      } else if (data.action === 'marked-all-read' && data.userId === user?._id) {
+        setNotifications(prev => prev.map(notif => ({ ...notif, read: true })));
+        setUnreadCount(0);
+      }
+    });
+
+    return () => {
+      socket.off('new-notification');
+      socket.off('notification-updated');
+    };
+  }, [socket, user?._id]);
 
   useEffect(() => {
     if (isOpen && user) {
@@ -75,6 +127,9 @@ const NotificationCenter = ({ isOpen, onClose, user }) => {
           )
         );
         setUnreadCount(prev => Math.max(0, prev - 1));
+        
+        // Server now handles real-time updates via Socket.IO
+        // No need to emit from client
       }
     } catch (err) {
       console.error('Failed to mark notification as read:', err);
@@ -93,6 +148,9 @@ const NotificationCenter = ({ isOpen, onClose, user }) => {
       if (response.ok) {
         setNotifications(prev => prev.map(notif => ({ ...notif, read: true })));
         setUnreadCount(0);
+        
+        // Server now handles real-time updates via Socket.IO
+        // No need to emit from client
       }
     } catch (err) {
       console.error('Failed to mark all notifications as read:', err);
@@ -149,7 +207,7 @@ const NotificationCenter = ({ isOpen, onClose, user }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-end p-4 z-50 pt-20">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[75vh] overflow-hidden border-2 border-gray-200 mr-4">
+      <div className="notification-center bg-white rounded-lg shadow-xl max-w-md w-full max-h-[75vh] overflow-hidden border-2 border-gray-200 mr-4">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b">
           <h3 className="text-lg font-semibold text-gray-900">

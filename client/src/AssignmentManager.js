@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { MessageCircle } from 'lucide-react';
+import ChatInterface from './ChatInterface';
 
-const AssignmentManager = ({ post, onAssignmentUpdated, user }) => {
+const AssignmentManager = ({ post, onAssignmentUpdated, user, socket }) => {
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [selectedChatAssignment, setSelectedChatAssignment] = useState(null);
 
   useEffect(() => {
     if (post && post._id) {
@@ -13,7 +16,7 @@ const AssignmentManager = ({ post, onAssignmentUpdated, user }) => {
 
   const fetchAssignments = async () => {
     try {
-      const response = await fetch(`/api/v1/assignments/post/${post._id}`);
+      const response = await fetch(`http://localhost:5000/api/v1/assignments/post/${post._id}`);
       const data = await response.json();
       
       if (data.success) {
@@ -30,7 +33,7 @@ const AssignmentManager = ({ post, onAssignmentUpdated, user }) => {
 
   const handleApprove = async (assignmentId, approved) => {
     try {
-      const response = await fetch(`/api/v1/assignments/${assignmentId}/approve`, {
+      const response = await fetch(`http://localhost:5000/api/v1/assignments/${assignmentId}/approve`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -54,7 +57,7 @@ const AssignmentManager = ({ post, onAssignmentUpdated, user }) => {
 
   const handleStatusUpdate = async (assignmentId, newStatus) => {
     try {
-      const response = await fetch(`/api/v1/assignments/${assignmentId}/status`, {
+      const response = await fetch(`http://localhost:5000/api/v1/assignments/${assignmentId}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -169,37 +172,71 @@ const AssignmentManager = ({ post, onAssignmentUpdated, user }) => {
               </div>
             )}
 
-            {assignment.status === 'approved' && (
-              <div className="flex space-x-2">
+            {/* Action buttons based on status */}
+            {assignment.status === 'pending' && (
+              <div className="flex space-x-3">
                 <button
-                  onClick={() => handleStatusUpdate(assignment._id, 'in_progress')}
-                  className="px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition-colors"
+                  onClick={() => handleApprove(assignment._id, true)}
+                  className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-all duration-200 shadow-sm hover:shadow-md"
                 >
-                  Mark In Progress
+                  ✓ Approve
                 </button>
                 <button
-                  onClick={() => handleStatusUpdate(assignment._id, 'cancelled')}
-                  className="px-4 py-2 bg-gray-600 text-white text-sm rounded-md hover:bg-gray-700 transition-colors"
+                  onClick={() => handleApprove(assignment._id, false)}
+                  className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-all duration-200 shadow-sm hover:shadow-md"
                 >
-                  Cancel
+                  ✕ Reject
                 </button>
               </div>
             )}
 
-            {assignment.status === 'in_progress' && (
-              <div className="flex space-x-2">
+            {/* Chat button for approved and in-progress assignments */}
+            {(assignment.status === 'approved' || assignment.status === 'in_progress') && (
+              <div className="flex flex-wrap gap-3">
                 <button
-                  onClick={() => handleStatusUpdate(assignment._id, 'completed')}
-                  className="px-4 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 transition-colors"
+                  onClick={() => {
+                    console.log('Chat button clicked for assignment:', assignment);
+                    setSelectedChatAssignment(assignment);
+                  }}
+                  className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-all duration-200 shadow-sm hover:shadow-md flex items-center space-x-2"
                 >
-                  Mark Completed
+                  <MessageCircle className="w-4 h-4" />
+                  <span>💬 Chat</span>
                 </button>
-                <button
-                  onClick={() => handleStatusUpdate(assignment._id, 'cancelled')}
-                  className="px-4 py-2 bg-gray-600 text-white text-sm rounded-md hover:bg-gray-700 transition-colors"
-                >
-                  Cancel
-                </button>
+                
+                {assignment.status === 'approved' && (
+                  <>
+                    <button
+                      onClick={() => handleStatusUpdate(assignment._id, 'in_progress')}
+                      className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-all duration-200 shadow-sm hover:shadow-md"
+                    >
+                      🚀 Start Working
+                    </button>
+                    <button
+                      onClick={() => handleStatusUpdate(assignment._id, 'cancelled')}
+                      className="px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-all duration-200 shadow-sm hover:shadow-md"
+                    >
+                      ❌ Cancel
+                    </button>
+                  </>
+                )}
+
+                {assignment.status === 'in_progress' && (
+                  <>
+                    <button
+                      onClick={() => handleStatusUpdate(assignment._id, 'completed')}
+                      className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-all duration-200 shadow-sm hover:shadow-md"
+                    >
+                      ✅ Mark Completed
+                    </button>
+                    <button
+                      onClick={() => handleStatusUpdate(assignment._id, 'cancelled')}
+                      className="px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-all duration-200 shadow-sm hover:shadow-md"
+                    >
+                      ❌ Cancel
+                    </button>
+                  </>
+                )}
               </div>
             )}
 
@@ -230,6 +267,16 @@ const AssignmentManager = ({ post, onAssignmentUpdated, user }) => {
           </div>
         ))}
       </div>
+
+      {/* Chat Interface */}
+      {selectedChatAssignment && (
+        <ChatInterface
+          assignment={selectedChatAssignment}
+          user={user}
+          onClose={() => setSelectedChatAssignment(null)}
+          socket={socket}
+        />
+      )}
     </div>
   );
 };

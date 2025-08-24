@@ -8,6 +8,7 @@ import EditPost from './EditPost';
 import PostDetail from './PostDetail';
 import UserProfile from './UserProfile';
 import MyAssignments from './MyAssignments';
+import Chats from './Chats';
 import './App.css';
 import NavigationHeader from './components/NavigationHeader';
 
@@ -307,7 +308,7 @@ function AppContent() {
               </div>
             </div>
 
-            <NavigationHeader user={user} onLogout={handleLogout} />
+            <NavigationHeader user={user} onLogout={handleLogout} socket={socket} />
 
             {/* Main Content with Glassmorphism */}
             <div className="relative z-10 max-w-7xl mx-auto px-4 py-8">
@@ -602,8 +603,16 @@ function AppContent() {
         {/* My Assignments Route */}
         <Route path="/my-assignments" element={
           <div className="min-h-screen bg-gray-100">
-            <NavigationHeader user={user} onLogout={handleLogout} />
-            <MyAssignments user={user} />
+            <NavigationHeader user={user} onLogout={handleLogout} socket={socket} />
+            <MyAssignments user={user} socket={socket} />
+          </div>
+        } />
+
+        {/* Chats Route */}
+        <Route path="/chats" element={
+          <div className="min-h-screen bg-gray-100">
+            <NavigationHeader user={user} onLogout={handleLogout} socket={socket} />
+            <Chats user={user} socket={socket} />
           </div>
         } />
 
@@ -631,7 +640,7 @@ function AppContent() {
               </div>
             </div>
 
-            <NavigationHeader user={user} onLogout={handleLogout} />
+            <NavigationHeader user={user} onLogout={handleLogout} socket={socket} />
 
             {/* Main Content with Glassmorphism */}
             <div className="relative z-10 max-w-7xl mx-auto px-4 py-8">
@@ -660,7 +669,7 @@ function AppContent() {
         {/* Community Route */}
         <Route path="/community" element={
           <div className="min-h-screen bg-gray-100">
-            <NavigationHeader user={user} onLogout={handleLogout} />
+            <NavigationHeader user={user} onLogout={handleLogout} socket={socket} />
             <div className="max-w-6xl mx-auto px-4 py-8">
               <div className="bg-white rounded-lg shadow-md p-8 text-center">
                 <h1 className="text-3xl font-bold text-gray-900 mb-4">Community</h1>
@@ -683,7 +692,7 @@ function AppContent() {
         {/* About Route */}
         <Route path="/about" element={
           <div className="min-h-screen bg-gray-100">
-            <NavigationHeader user={user} onLogout={handleLogout} />
+            <NavigationHeader user={user} onLogout={handleLogout} socket={socket} />
             <div className="max-w-6xl mx-auto px-4 py-8">
               <div className="bg-white rounded-lg shadow-md p-8 text-center">
                 <h1 className="text-3xl font-bold text-gray-900 mb-4">About NeighborLink</h1>

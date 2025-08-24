@@ -20,14 +20,18 @@ const NotificationSchema = new mongoose.Schema({
       'assignment_status_changed', // Assignment status updated
       'new_comment',            // Someone commented on your post
       'assignment_completed',    // Assignment marked as completed
-      'assignment_cancelled'    // Assignment was cancelled
+      'assignment_cancelled',   // Assignment was cancelled
+      'new_message'             // New chat message received
     ],
     required: true,
   },
   post: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Post',
-    required: true,
+    required: function() {
+      // Post is only required for non-chat notifications
+      return this.type !== 'new_message';
+    },
   },
   assignment: {
     type: mongoose.Schema.Types.ObjectId,

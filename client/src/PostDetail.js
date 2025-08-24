@@ -279,6 +279,7 @@ function PostDetail({ socket, currentUserId, user }) {
               post={post} 
               onAssignmentUpdated={handleAssignmentUpdated}
               user={user}
+              socket={socket}
             />
           </div>
         )}

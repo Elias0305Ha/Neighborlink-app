@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { MessageCircle } from 'lucide-react';
+import ChatInterface from './ChatInterface';
 
-const MyAssignments = ({ user }) => {
+const MyAssignments = ({ user, socket }) => {
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('all');
+  const [selectedChatAssignment, setSelectedChatAssignment] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -16,7 +19,7 @@ const MyAssignments = ({ user }) => {
 
   const fetchMyAssignments = async () => {
     try {
-      const response = await fetch(`/api/v1/assignments/helper/${user._id}`, {
+      const response = await fetch(`http://localhost:5000/api/v1/assignments/helper/${user._id}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -38,7 +41,7 @@ const MyAssignments = ({ user }) => {
 
   const handleStatusUpdate = async (assignmentId, newStatus) => {
     try {
-      const response = await fetch(`/api/v1/assignments/${assignmentId}/status`, {
+      const response = await fetch(`http://localhost:5000/api/v1/assignments/${assignmentId}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -267,35 +270,49 @@ const MyAssignments = ({ user }) => {
 
                 {/* Action Buttons */}
                 {assignment.status === 'approved' && (
-                  <div className="space-y-2">
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => setSelectedChatAssignment(assignment)}
+                      className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-sm hover:shadow-md flex items-center justify-center space-x-2"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      <span>💬 Chat</span>
+                    </button>
                     <button
                       onClick={() => handleStatusUpdate(assignment._id, 'in_progress')}
-                      className="w-full px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                      className="flex-1 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200 shadow-sm hover:shadow-md"
                     >
-                      🚀 Start Working
+                      🚀 Start
                     </button>
                     <button
                       onClick={() => handleStatusUpdate(assignment._id, 'cancelled')}
-                      className="w-full px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
+                      className="flex-1 px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all duration-200 shadow-sm hover:shadow-md"
                     >
-                      ❌ Cancel Assignment
+                      ❌ Cancel
                     </button>
                   </div>
                 )}
 
                 {assignment.status === 'in_progress' && (
-                  <div className="space-y-2">
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => setSelectedChatAssignment(assignment)}
+                      className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-sm hover:shadow-md flex items-center justify-center space-x-2"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      <span>💬 Chat</span>
+                    </button>
                     <button
                       onClick={() => handleStatusUpdate(assignment._id, 'completed')}
-                      className="w-full px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
+                      className="flex-1 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200 shadow-sm hover:shadow-md"
                     >
-                      ✅ Mark Completed
+                      ✅ Complete
                     </button>
                     <button
                       onClick={() => handleStatusUpdate(assignment._id, 'cancelled')}
-                      className="w-full px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
+                      className="flex-1 px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all duration-200 shadow-sm hover:shadow-md"
                     >
-                      ❌ Cancel Assignment
+                      ❌ Cancel
                     </button>
                   </div>
                 )}
@@ -337,6 +354,16 @@ const MyAssignments = ({ user }) => {
             </div>
           ))}
         </div>
+      )}
+
+      {/* Chat Interface */}
+      {selectedChatAssignment && (
+        <ChatInterface
+          assignment={selectedChatAssignment}
+          user={user}
+          onClose={() => setSelectedChatAssignment(null)}
+          socket={socket}
+        />
       )}
     </div>
   );

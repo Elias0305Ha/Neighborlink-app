@@ -15,6 +15,7 @@ const createNotification = async (notificationData, io, userConnections) => {
       const recipientSocketId = userConnections.get(notification.recipient.toString());
       if (recipientSocketId) {
         io.to(recipientSocketId).emit('new-notification', notification);
+        console.log('Real-time notification sent to user:', notification.recipient);
       }
     }
     
@@ -136,11 +137,33 @@ const notifyNewComment = async (comment, io, userConnections) => {
   return await createNotification(notificationData, io, userConnections);
 };
 
+// Notification for new chat messages
+const notifyNewMessage = async (recipientId, assignmentId, message, io, userConnections) => {
+  // Always create a notification for chat messages
+  // This ensures consistency and proper tracking
+  const notificationData = {
+    recipient: recipientId,
+    sender: message.sender._id || message.sender,
+    type: 'new_message',
+    assignment: assignmentId,
+    message: `You have a new message from ${message.sender.name || 'someone'}`,
+    data: {
+      assignmentId: assignmentId,
+      messageId: message._id,
+      senderName: message.sender.name || 'Someone'
+    }
+  };
+  
+  // Create the notification and emit real-time update
+  return await createNotification(notificationData, io, userConnections);
+};
+
 module.exports = {
   createNotification,
   notifyAssignmentClaimed,
   notifyAssignmentApproved,
   notifyAssignmentRejected,
   notifyAssignmentStatusChanged,
-  notifyNewComment
+  notifyNewComment,
+  notifyNewMessage
 };

@@ -8,6 +8,7 @@ const commentRoutes = require('./routes/comments'); // Import comment routes
 const userRoutes = require('./routes/users'); // Import user routes
 const assignmentRoutes = require('./routes/assignments'); // Import assignment routes
 const notificationRoutes = require('./routes/notifications'); // Import notification routes
+const chatRoutes = require('./routes/chats'); // Import chat routes
 console.log('Assignment routes loaded:', typeof assignmentRoutes);
 const app = express();
 
@@ -32,6 +33,9 @@ app.use('/api/v1/assignments', assignmentRoutes);
 
 // Mount notification routes
 app.use('/api/v1/notifications', notificationRoutes);
+
+// Mount chat routes
+app.use('/api/v1/chats', chatRoutes);
 
 // Multer configuration for file uploads
 const storage = multer.diskStorage({
@@ -111,6 +115,19 @@ io.on('connection', (socket) => {
     // Broadcast to all connected clients
     io.emit('profile-picture-updated', data);
     console.log('Profile picture update broadcasted to all clients');
+  });
+
+  // Handle chat typing indicators
+  socket.on('typing', (data) => {
+    console.log('User typing:', data);
+    // Broadcast typing indicator to other participants
+    socket.broadcast.emit('user-typing', data);
+  });
+
+  socket.on('stop-typing', (data) => {
+    console.log('User stopped typing:', data);
+    // Broadcast stop typing indicator
+    socket.broadcast.emit('user-stop-typing', data);
   });
   
   // Handle disconnection

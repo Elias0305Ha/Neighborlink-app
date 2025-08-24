@@ -14,9 +14,16 @@ const router = express.Router();
 // Get all assignments (for debugging/testing)
 router.get('/', async (req, res) => {
   try {
+    const assignments = await Assignment.find()
+      .populate('post', 'title')
+      .populate('helper', 'name')
+      .sort({ createdAt: -1 });
+    
     res.json({ 
       success: true, 
       message: 'Assignments endpoint working!',
+      count: assignments.length,
+      assignments: assignments,
       routes: ['POST /', 'GET /post/:postId', 'GET /helper/:userId']
     });
   } catch (err) {

@@ -2,9 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import NotificationCenter from './NotificationCenter';
 
-function NavigationHeader({ user, onLogout }) {
+function NavigationHeader({ user, onLogout, socket }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  
+  // Debug profile menu state
+  useEffect(() => {
+    console.log('Profile menu state changed:', isProfileMenuOpen);
+  }, [isProfileMenuOpen]);
   const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const navigate = useNavigate();
@@ -16,6 +21,35 @@ function NavigationHeader({ user, onLogout }) {
       fetchUnreadCount();
     }
   }, [user]);
+
+  // Real-time unread count updates
+  useEffect(() => {
+    if (!socket) return;
+
+    // Listen for new notifications to update count
+    socket.on('new-notification', () => {
+      console.log('New notification received in NavigationHeader');
+      setUnreadCount(prev => prev + 1);
+    });
+
+    // Listen for notification updates (when marked as read)
+    socket.on('notification-updated', (data) => {
+      console.log('Notification update received in NavigationHeader:', data);
+      
+      if (data.userId === user?._id) {
+        if (data.action === 'marked-read') {
+          setUnreadCount(prev => Math.max(0, prev - 1));
+        } else if (data.action === 'marked-all-read') {
+          setUnreadCount(0);
+        }
+      }
+    });
+
+    return () => {
+      socket.off('new-notification');
+      socket.off('notification-updated');
+    };
+  }, [socket, user?._id]);
 
   // Close profile dropdown when clicking outside
   useEffect(() => {
@@ -51,10 +85,11 @@ function NavigationHeader({ user, onLogout }) {
 
   const navigationItems = [
     { name: 'Home', to: '/' },
-    { name: 'Community', to: '/community' },
-    { name: 'About', to: '/about' },
     { name: 'My Posts', to: '/?filter=my-posts' },
     { name: 'My Assignments', to: '/my-assignments' },
+    { name: 'Chats', to: '/chats' },
+    { name: 'Community', to: '/community' },
+    { name: 'About', to: '/about' },
   ];
 
 
@@ -144,6 +179,8 @@ function NavigationHeader({ user, onLogout }) {
               </button>
             )}
 
+            
+
                          {/* Create Post Button (Mobile) */}
              <button
                className="md:hidden h-9 w-9 p-0 rounded-md hover:bg-gray-100 flex items-center justify-center"
@@ -160,42 +197,35 @@ function NavigationHeader({ user, onLogout }) {
                </svg>
              </button>
 
-            {/* Profile dropdown */}
-            <div className="relative profile-dropdown">
-              <button
-                className="h-12 w-12 rounded-full hover:bg-gray-100 flex items-center justify-center transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                onClick={() => setIsProfileMenuOpen((v) => !v)}
-                aria-haspopup="menu"
-                aria-expanded={isProfileMenuOpen}
-              >
-                <div className="h-11 w-11 rounded-full overflow-hidden bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-sm ring-2 ring-white shadow-lg">
-                  {/* Use the same profile picture logic as posts */}
-                  {user && user.profilePicture ? (
-                    <img
-                      src={`http://localhost:5000${user.profilePicture}`}
-                      alt="User avatar"
-                      className="h-full w-full object-cover cursor-pointer"
-                      onError={(e) => { 
-                        e.currentTarget.style.display = 'none'; 
-                      }}
-                      onLoad={() => console.log('Profile picture loaded successfully:', user.profilePicture)}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (user && user._id) navigate(`/user/${user._id}`);
-                      }}
-                    />
-                  ) : (
-                    <div 
-                      className="text-white font-bold text-lg cursor-pointer flex items-center justify-center w-full h-full"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (user && user._id) navigate(`/user/${user._id}`);
-                      }}
-                    >
-                      {getUserInitials(user?.name)}
-                    </div>
-                  )}
-                </div>
+                         {/* Profile dropdown */}
+             <div className="relative profile-dropdown">
+               <button
+                 className="h-12 w-12 rounded-full hover:bg-gray-100 flex items-center justify-center transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                 onClick={() => {
+                   console.log('Profile button clicked, current state:', isProfileMenuOpen);
+                   setIsProfileMenuOpen(!isProfileMenuOpen);
+                 }}
+                 aria-haspopup="menu"
+                 aria-expanded={isProfileMenuOpen}
+               >
+                                 <div className="h-11 w-11 rounded-full overflow-hidden bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-sm ring-2 ring-white shadow-lg">
+                   {/* Use the same profile picture logic as posts */}
+                   {user && user.profilePicture ? (
+                     <img
+                       src={`http://localhost:5000${user.profilePicture}`}
+                       alt="User avatar"
+                       className="h-full w-full object-cover"
+                       onError={(e) => { 
+                         e.currentTarget.style.display = 'none'; 
+                       }}
+                       onLoad={() => console.log('Profile picture loaded successfully:', user.profilePicture)}
+                     />
+                   ) : (
+                     <div className="text-white font-bold text-lg flex items-center justify-center w-full h-full">
+                       {getUserInitials(user?.name)}
+                     </div>
+                   )}
+                 </div>
               </button>
               
               {/* Fancy Dropdown Menu */}
@@ -366,17 +396,44 @@ function NavigationHeader({ user, onLogout }) {
                   {item.name}
                 </Link>
               ))}
+
+              {/* Mobile Logout Button */}
+              <div className="px-3 py-2 border-t border-gray-200">
+                <button
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    if (onLogout) onLogout();
+                  }}
+                  className="w-full text-left px-3 py-2 text-base font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors flex items-center"
+                >
+                  <svg
+                    className="h-4 w-4 mr-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                    />
+                  </svg>
+                  Logout
+                </button>
+              </div>
             </div>
           </div>
         )}
       </div>
 
       {/* Notification Center */}
-      <NotificationCenter
-        isOpen={isNotificationCenterOpen}
-        onClose={() => setIsNotificationCenterOpen(false)}
-        user={user}
-      />
+                  <NotificationCenter
+              isOpen={isNotificationCenterOpen}
+              onClose={() => setIsNotificationCenterOpen(false)}
+              user={user}
+              socket={socket}
+            />
     </header>
   );
 }
