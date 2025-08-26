@@ -76,4 +76,52 @@ router.put('/:userId/profile-picture', auth, (req, res, next) => {
   }
 });
 
+// Update user profile information (protected - only user can update their own)
+router.put('/:userId/profile', auth, async (req, res) => {
+  try {
+    // Check if user is updating their own profile
+    if (req.params.userId !== req.user.userId) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'You can only update your own profile' 
+      });
+    }
+
+    const { name, email, zipCode, bio } = req.body;
+
+    // Validate required fields
+    if (!name || !email || !zipCode) {
+      return res.status(400).json({
+        success: false,
+        message: 'Name, email, and ZIP code are required'
+      });
+    }
+
+    // Check if email is already taken by another user
+    const existingUser = await User.findOne({ 
+      email, 
+      _id: { $ne: req.params.userId } 
+    });
+    
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email is already taken by another user'
+      });
+    }
+
+    // Update user profile
+    const updatedUser = await User.findByIdAndUpdate(
+      req.params.userId,
+      { name, email, zipCode, bio },
+      { new: true, runValidators: true }
+    ).select('-password');
+    
+    res.json({ success: true, data: updatedUser });
+  } catch (error) {
+    console.error('Profile update error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
 module.exports = router; 

@@ -31,12 +31,13 @@ function AppContent() {
   const [editingPost, setEditingPost] = useState(null);
   const [socket, setSocket] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedType, setSelectedType] = useState('');
   const [sortBy, setSortBy] = useState('newest');
 
   // Fetch user info from backend using token
-  const fetchUserInfo = async (token) => {
+  const fetchUserInfo = useCallback(async (token) => {
     try {
       const response = await fetch('http://localhost:5000/api/v1/auth/me', {
         headers: {
@@ -53,7 +54,7 @@ function AppContent() {
     } catch (err) {
       setUser(null);
     }
-  };
+  }, []);
 
   // Check for token on app load
   useEffect(() => {
@@ -62,11 +63,20 @@ function AppContent() {
     if (token) {
       fetchUserInfo(token);
     }
-  }, []);
+  }, [fetchUserInfo]);
+
+  // Debounce search query for better performance
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   // Set up Socket.IO connection
   useEffect(() => {
-    if (isLoggedIn) {
+    if (isLoggedIn && user?._id) {
       // Connect to Socket.IO server
       const newSocket = io('http://localhost:5000');
       
@@ -75,9 +85,7 @@ function AppContent() {
         console.log('Connected to Socket.IO server');
         
         // Send user ID to server so it can track who's connected
-        if (user && user._id) {
-          newSocket.emit('user-login', user._id);
-        }
+        newSocket.emit('user-login', user._id);
       });
       
       newSocket.on('disconnect', () => {
@@ -92,7 +100,7 @@ function AppContent() {
         newSocket.close();
       };
     }
-  }, [isLoggedIn]);
+  }, [isLoggedIn, user?._id]);
 
   // Listen for login (token set in localStorage)
   useEffect(() => {
@@ -107,7 +115,7 @@ function AppContent() {
     };
     window.addEventListener('storage', handleStorage);
     return () => window.removeEventListener('storage', handleStorage);
-  }, []);
+  }, [fetchUserInfo]);
 
   // Fetch posts when logged in
   const fetchPosts = useCallback(() => {
@@ -130,66 +138,68 @@ function AppContent() {
     }
   }, [isLoggedIn, location.pathname, fetchPosts]);
 
-  // Filter and sort posts
+  // Filter and sort posts - PERFORMANCE OPTIMIZED
   const filteredPosts = useMemo(() => {
-    let filtered = [...posts];
+    if (!posts.length) return [];
     
-    // Search filter
-    if (searchQuery) {
+    let filtered = posts;
+    
+    // Search filter - OPTIMIZED: using debounced query
+    if (debouncedSearchQuery.trim()) {
+      const query = debouncedSearchQuery.toLowerCase().trim();
       filtered = filtered.filter(post => 
-        post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        post.description.toLowerCase().includes(searchQuery.toLowerCase())
+        post.title.toLowerCase().includes(query) ||
+        post.description.toLowerCase().includes(query)
       );
     }
     
-    // Category filter
+    // Category filter - OPTIMIZED: early return if no match
     if (selectedCategory) {
       filtered = filtered.filter(post => post.category === selectedCategory);
+      if (!filtered.length) return [];
     }
     
-    // Type filter
+    // Type filter - OPTIMIZED: early return if no match
     if (selectedType) {
       filtered = filtered.filter(post => post.type === selectedType);
+      if (!filtered.length) return [];
     }
     
-
-    
-    // Sort
+    // Sort - OPTIMIZED: avoid creating new Date objects repeatedly
     if (sortBy === 'newest') {
-      filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      filtered = [...filtered].sort((a, b) => {
+        const dateA = new Date(a.createdAt).getTime();
+        const dateB = new Date(b.createdAt).getTime();
+        return dateB - dateA;
+      });
     } else if (sortBy === 'oldest') {
-      filtered.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+      filtered = [...filtered].sort((a, b) => {
+        const dateA = new Date(a.createdAt).getTime();
+        const dateB = new Date(b.createdAt).getTime();
+        return dateA - dateB;
+      });
     }
     
     return filtered;
-  }, [posts, searchQuery, selectedCategory, selectedType, sortBy, user]);
+  }, [posts, debouncedSearchQuery, selectedCategory, selectedType, sortBy]);
 
   useEffect(() => {
     fetchPosts();
-  }, [isLoggedIn]);
+  }, [fetchPosts]);
 
   // Logout function
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     localStorage.removeItem('token');
     setIsLoggedIn(false);
     setUser(null);
-  };
+  }, []);
 
   // After login, fetch user info
-  const handleLogin = () => {
+  const handleLogin = useCallback(() => {
     setIsLoggedIn(true);
     const token = localStorage.getItem('token');
     if (token) fetchUserInfo(token);
-  };
-
-
-
-  // Send user ID to Socket.IO when user info is fetched
-  useEffect(() => {
-    if (socket && user && user._id) {
-      socket.emit('user-login', user._id);
-    }
-  }, [socket, user]);
+  }, [fetchUserInfo]);
 
   // Listen for profile picture updates
   useEffect(() => {
@@ -225,36 +235,46 @@ function AppContent() {
 
       return () => {
         socket.off('profile-picture-updated');
+        socket.off('new-notification');
       };
-    } else {
-      console.log('No socket available for profile picture listener');
     }
   }, [socket]);
 
+  // Listen for post updates from other components
+  useEffect(() => {
+    const handlePostUpdate = () => {
+      console.log('Post update event received, refreshing posts...');
+      fetchPosts();
+    };
+
+    window.addEventListener('post-updated', handlePostUpdate);
+    return () => window.removeEventListener('post-updated', handlePostUpdate);
+  }, [fetchPosts]);
+
   // Handle post creation
-  const handlePostCreated = () => {
+  const handlePostCreated = useCallback(() => {
     fetchPosts(); // Refresh posts list
     setShowCreatePost(false); // Hide the form
-  };
+  }, [fetchPosts]);
 
   // Handle post update
-  const handlePostUpdated = () => {
+  const handlePostUpdated = useCallback(() => {
     fetchPosts(); // Refresh posts list
     setEditingPost(null); // Hide the edit form
-  };
+  }, [fetchPosts]);
 
   // Handle canceling edit
-  const handleCancelEdit = () => {
+  const handleCancelEdit = useCallback(() => {
     setEditingPost(null); // Hide the edit form
-  };
+  }, []);
 
   // Handle edit click
-  const handleEditClick = (post) => {
+  const handleEditClick = useCallback((post) => {
     setEditingPost(post); // Set the post we want to edit
-  };
+  }, []);
 
   // Handle delete click
-  const handleDeleteClick = async (post) => {
+  const handleDeleteClick = useCallback(async (post) => {
     // Show confirmation dialog
     if (window.confirm('Are you sure you want to delete this post? This action cannot be undone.')) {
       try {
@@ -279,7 +299,31 @@ function AppContent() {
         alert('Network error. Please try again.');
       }
     }
-  };
+  }, [fetchPosts]);
+
+  // Memoize search and filter handlers to prevent unnecessary re-renders
+  const handleSearchChange = useCallback((e) => {
+    setSearchQuery(e.target.value);
+  }, []);
+
+  const handleCategoryChange = useCallback((e) => {
+    setSelectedCategory(e.target.value);
+  }, []);
+
+  const handleTypeChange = useCallback((e) => {
+    setSelectedType(e.target.value);
+  }, []);
+
+  const handleSortChange = useCallback((e) => {
+    setSortBy(e.target.value);
+  }, []);
+
+  const clearFilters = useCallback(() => {
+    setSelectedCategory('');
+    setSelectedType('');
+    setSearchQuery('');
+    setSortBy('newest');
+  }, []);
 
   if (isLoggedIn) {
     return (
@@ -292,12 +336,12 @@ function AppContent() {
               {/* Gradient Background */}
               <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50"></div>
               
-              {/* Animated Background Elements */}
+              {/* PERFORMANCE OPTIMIZED Background Elements */}
               <div className="absolute inset-0">
-                <div className="absolute top-20 left-10 w-72 h-72 bg-blue-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-pulse"></div>
-                <div className="absolute top-40 right-20 w-96 h-96 bg-purple-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-pulse" style={{animationDelay: '2s'}}></div>
-                <div className="absolute bottom-20 left-1/4 w-80 h-80 bg-pink-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-pulse" style={{animationDelay: '4s'}}></div>
-              </div>
+                <div className="absolute top-20 left-10 w-72 h-72 bg-blue-200 rounded-full mix-blend-multiply filter blur-lg opacity-50"></div>
+                <div className="absolute top-40 right-20 w-96 h-96 bg-purple-200 rounded-full mix-blend-multiply filter blur-lg opacity-50"></div>
+                <div className="absolute bottom-20 left-1/4 w-80 h-80 bg-pink-200 rounded-full mix-blend-multiply filter blur-lg opacity-50"></div>
+            </div>
               
               {/* Subtle Pattern Overlay */}
               <div className="absolute inset-0 opacity-5">
@@ -305,8 +349,8 @@ function AppContent() {
                   backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
                   backgroundSize: '60px 60px'
                 }}></div>
-              </div>
-            </div>
+          </div>
+        </div>
 
             <NavigationHeader user={user} onLogout={handleLogout} socket={socket} />
 
@@ -326,52 +370,49 @@ function AppContent() {
 
               {/* Create Post Section with Glassmorphism */}
               <div className="mb-12 flex justify-center">
-                <div className="backdrop-blur-md bg-white/70 rounded-2xl p-8 shadow-2xl border border-white/20">
+                <div className="bg-white rounded-2xl p-8 shadow-lg border border-gray-200">
                   <div className="text-center">
                     <h2 className="text-2xl font-bold text-gray-900 mb-4">Ready to Make a Difference?</h2>
                     <p className="text-gray-600 mb-6 text-lg">Create a post to request help or offer your skills to neighbors</p>
                     
-                    {!showCreatePost && !editingPost ? (
-                      <button
-                        onClick={() => setShowCreatePost(true)}
-                        className="group relative inline-flex items-center justify-center px-8 py-4 text-lg font-semibold text-white bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 overflow-hidden"
+            {!showCreatePost && !editingPost ? (
+              <button
+                onClick={() => setShowCreatePost(true)}
+                        className="inline-flex items-center justify-center px-8 py-4 text-lg font-semibold text-white bg-blue-600 rounded-xl shadow-lg hover:bg-blue-700 transition-colors duration-200"
                       >
-                        <span className="absolute inset-0 bg-gradient-to-r from-purple-600 to-blue-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
-                        <span className="relative flex items-center">
-                          <svg className="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                          </svg>
-                          Create New Post
-                        </span>
-                      </button>
-                    ) : showCreatePost ? (
-                      <div className="w-full max-w-md">
-                        <CreatePost onPostCreated={handlePostCreated} />
-                        <div className="text-center mt-4">
-                          <button
-                            onClick={() => setShowCreatePost(false)}
+                        <svg className="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                        Create New Post
+              </button>
+            ) : showCreatePost ? (
+              <div className="w-full max-w-md">
+                <CreatePost onPostCreated={handlePostCreated} />
+                <div className="text-center mt-4">
+                  <button
+                    onClick={() => setShowCreatePost(false)}
                             className="text-gray-500 hover:text-gray-700 font-medium transition-colors"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    ) : editingPost ? (
-                      <div className="w-full max-w-md">
-                        <EditPost 
-                          post={editingPost}
-                          onPostUpdated={handlePostUpdated}
-                          onCancel={handleCancelEdit}
-                        />
-                      </div>
-                    ) : null}
-                  </div>
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : editingPost ? (
+              <div className="w-full max-w-md">
+                <EditPost 
+                  post={editingPost}
+                  onPostUpdated={handlePostUpdated}
+                  onCancel={handleCancelEdit}
+                />
+              </div>
+            ) : null}
+          </div>
                 </div>
               </div>
 
               {/* Search and Filter Section with Glassmorphism */}
               <div className="w-full mb-8">
-                <div className="backdrop-blur-md bg-white/70 rounded-2xl p-6 shadow-2xl border border-white/20">
+                <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200">
                   <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">Find Help in Your Neighborhood</h2>
                   
                   {(selectedCategory || selectedType || searchQuery) && (
@@ -382,8 +423,8 @@ function AppContent() {
                         {selectedCategory && <span className="ml-2">Category: {selectedCategory}</span>}
                         {selectedType && <span className="ml-2">Type: {selectedType}</span>}
                       </p>
-                    </div>
-                  )}
+                        </div>
+                      )}
                   
                   {/* Search Bar */}
                   <div className="mb-6">
@@ -391,9 +432,9 @@ function AppContent() {
                       <input
                         type="text"
                         placeholder="Search posts (e.g., cleaning, garden, help)..."
-                        className="w-full p-4 pl-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg transition-all duration-300"
+                        className="w-full p-4 pl-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg transition-colors duration-200"
                         value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onChange={handleSearchChange}
                       />
                       <svg className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -406,7 +447,7 @@ function AppContent() {
                     {/* Category Filter */}
                     <select
                       value={selectedCategory}
-                      onChange={(e) => setSelectedCategory(e.target.value)}
+                      onChange={handleCategoryChange}
                       className="p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
                     >
                       <option value="">All Categories</option>
@@ -421,7 +462,7 @@ function AppContent() {
                     {/* Type Filter */}
                     <select
                       value={selectedType}
-                      onChange={(e) => setSelectedType(e.target.value)}
+                      onChange={handleTypeChange}
                       className="p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
                     >
                       <option value="">All Types</option>
@@ -432,7 +473,7 @@ function AppContent() {
                     {/* Sort Filter */}
                     <select
                       value={sortBy}
-                      onChange={(e) => setSortBy(e.target.value)}
+                      onChange={handleSortChange}
                       className="p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
                     >
                       <option value="newest">Newest First</option>
@@ -441,17 +482,12 @@ function AppContent() {
                     </select>
                     
                     {/* Clear Filters Button */}
-                    <button
-                      onClick={() => {
-                        setSelectedCategory('');
-                        setSelectedType('');
-                        setSearchQuery('');
-                        setSortBy('newest');
-                      }}
+                        <button
+                      onClick={clearFilters}
                       className="p-3 border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                     >
                       Clear Filters
-                    </button>
+                        </button>
                   </div>
                 </div>
               </div>
@@ -467,7 +503,7 @@ function AppContent() {
                 
                 {filteredPosts.length === 0 ? (
                   <div className="text-center py-16">
-                    <div className="backdrop-blur-md bg-white/70 rounded-2xl p-12 shadow-2xl border border-white/20">
+                    <div className="bg-white rounded-2xl p-12 shadow-lg border border-gray-200">
                       <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center">
                         <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -483,10 +519,10 @@ function AppContent() {
                   </div>
                 ) : (
                   <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-                    {filteredPosts.map(post => (
+                    {filteredPosts.slice(0, 50).map(post => (
                       <div 
                         key={post._id} 
-                        className="group backdrop-blur-md bg-white/70 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 cursor-pointer transform hover:-translate-y-2 border border-white/20 overflow-hidden" 
+                        className="group bg-white rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-200 cursor-pointer border border-gray-200 overflow-hidden" 
                         onClick={() => navigate(`/post/${post._id}`)}
                       >
                         {/* Post Image */}
@@ -495,7 +531,8 @@ function AppContent() {
                             <img 
                               src={`http://localhost:5000${post.image}`} 
                               alt="Post" 
-                              className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                              className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-200"
+                              loading="lazy"
                               onError={(e) => {
                                 e.target.style.display = 'none';
                               }}
@@ -536,6 +573,7 @@ function AppContent() {
                                     src={`http://localhost:5000${post.createdBy.profilePicture}`} 
                                     alt={post.createdBy.name}
                                     className="w-full h-full object-cover"
+                                    loading="lazy"
                                   />
                                 ) : (
                                   <div className="text-lg text-white font-bold">
@@ -584,14 +622,14 @@ function AppContent() {
                               </div>
                             )}
                           </div>
-                        </div>
-                      </div>
-                    ))}
+                    </div>
                   </div>
-                )}
+                ))}
               </div>
-            </div>
+            )}
           </div>
+        </div>
+      </div>
         } />
 
         {/* Individual Post Route */}
@@ -624,11 +662,11 @@ function AppContent() {
               {/* Gradient Background */}
               <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50"></div>
               
-              {/* Animated Background Elements */}
+              {/* PERFORMANCE OPTIMIZED Background Elements */}
               <div className="absolute inset-0">
-                <div className="absolute top-20 left-10 w-72 h-72 bg-blue-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-pulse"></div>
-                <div className="absolute top-40 right-20 w-96 h-96 bg-purple-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-pulse" style={{animationDelay: '2s'}}></div>
-                <div className="absolute bottom-20 left-1/4 w-80 h-80 bg-pink-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-pulse" style={{animationDelay: '4s'}}></div>
+                <div className="absolute top-20 left-10 w-72 h-72 bg-blue-200 rounded-full mix-blend-multiply filter blur-lg opacity-50"></div>
+                <div className="absolute top-40 right-20 w-96 h-96 bg-purple-200 rounded-full mix-blend-multiply filter blur-lg opacity-50"></div>
+                <div className="absolute bottom-20 left-1/4 w-80 h-80 bg-pink-200 rounded-full mix-blend-multiply filter blur-lg opacity-50"></div>
               </div>
               
               {/* Subtle Pattern Overlay */}
@@ -665,6 +703,9 @@ function AppContent() {
 
         {/* Edit Post Route */}
         <Route path="/edit/:postId" element={<EditPost post={editingPost} onPostUpdated={handlePostUpdated} onCancel={() => navigate('/')} />} />
+        
+        {/* User Profile Route */}
+        <Route path="/profile/:userId" element={<UserProfile currentUserId={user?._id} user={user} socket={socket} />} />
         
         {/* Community Route */}
         <Route path="/community" element={

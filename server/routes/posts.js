@@ -85,9 +85,12 @@ router.get('/:id', async (req, res) => {
 });
 
 // Update a post (protected - only post owner can edit)
-router.put('/:id', auth, async (req, res) => {
+router.put('/:id', auth, (req, res, next) => {
+  const upload = req.app.get('upload');
+  upload.single('image')(req, res, next);
+}, async (req, res) => {
   try {
-    const { title, description, type, category, location } = req.body;
+    const { title, description, type, category, location, removeImage } = req.body;
     const postId = req.params.id;
     
     // Find the post and check if it exists
@@ -107,15 +110,27 @@ router.put('/:id', auth, async (req, res) => {
       });
     }
     
+    // Prepare update data
+    const updateData = { title, description, type, category, location };
+    
+    // Handle image updates
+    if (removeImage === 'true') {
+      updateData.image = ''; // Remove image
+    } else if (req.file) {
+      updateData.image = `/uploads/${req.file.filename}`; // New image uploaded
+    }
+    // If neither, keep existing image
+    
     // Update the post
     const updatedPost = await Post.findByIdAndUpdate(
       postId,
-      { title, description, type, category, location },
+      updateData,
       { new: true, runValidators: true }
     ).populate('createdBy', 'name email');
     
     res.json({ success: true, data: updatedPost });
   } catch (err) {
+    console.error('Post update error:', err);
     res.status(400).json({ success: false, message: err.message });
   }
 });

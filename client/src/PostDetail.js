@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import AddComment from './AddComment';
 import CommentList from './CommentList';
@@ -16,7 +16,7 @@ function PostDetail({ socket, currentUserId, user }) {
   const navigate = useNavigate();
 
   // Fetch post details
-  const fetchPost = async () => {
+  const fetchPost = useCallback(async () => {
     try {
       setLoading(true);
       const response = await fetch(`http://localhost:5000/api/v1/posts/${postId}`);
@@ -34,16 +34,10 @@ function PostDetail({ socket, currentUserId, user }) {
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    if (postId) {
-      fetchPost();
-    }
   }, [postId]);
 
   // Fetch assignments for this post
-  const fetchAssignments = async () => {
+  const fetchAssignments = useCallback(async () => {
     try {
       const response = await fetch(`http://localhost:5000/api/v1/assignments/post/${postId}`);
       const data = await response.json();
@@ -54,17 +48,33 @@ function PostDetail({ socket, currentUserId, user }) {
     } catch (err) {
       console.error('Failed to fetch assignments:', err);
     }
-  };
+  }, [postId]);
+
+  useEffect(() => {
+    if (postId) {
+      fetchPost();
+    }
+  }, [postId, fetchPost]);
+
+  // Listen for post updates from other components
+  useEffect(() => {
+    const handlePostUpdate = () => {
+      fetchPost();
+    };
+
+    window.addEventListener('post-updated', handlePostUpdate);
+    return () => window.removeEventListener('post-updated', handlePostUpdate);
+  }, [fetchPost]);
 
   // Handle assignment updates
-  const handleAssignmentUpdated = () => {
+  const handleAssignmentUpdated = useCallback(() => {
     fetchAssignments();
     // Also refresh the post to get updated status
     fetchPost();
-  };
+  }, [fetchAssignments, fetchPost]);
 
   // Handle post deletion
-  const handleDeletePost = async () => {
+  const handleDeletePost = useCallback(async () => {
     if (!window.confirm('Are you sure you want to delete this post? This action cannot be undone.')) {
       return;
     }
@@ -89,7 +99,24 @@ function PostDetail({ socket, currentUserId, user }) {
     } catch (err) {
       alert('Network error. Please try again.');
     }
-  };
+  }, [postId, navigate]);
+
+  // Handle comment addition
+  const handleCommentAdded = useCallback((newComment) => {
+    // Add new comment to state instead of reloading
+    setComments(prevComments => [newComment, ...prevComments]);
+  }, []);
+
+  // Handle claim form close
+  const handleClaimFormClose = useCallback(() => {
+    setShowClaimForm(false);
+  }, []);
+
+  // Handle claim submission
+  const handleClaimSubmitted = useCallback((assignment) => {
+    setShowClaimForm(false);
+    handleAssignmentUpdated();
+  }, [handleAssignmentUpdated]);
 
   if (loading) {
     return (
@@ -289,11 +316,8 @@ function PostDetail({ socket, currentUserId, user }) {
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
             <ClaimRequest
               post={post}
-              onClaimSubmitted={(assignment) => {
-                setShowClaimForm(false);
-                handleAssignmentUpdated();
-              }}
-              onClose={() => setShowClaimForm(false)}
+              onClaimSubmitted={handleClaimSubmitted}
+              onClose={handleClaimFormClose}
               user={user}
             />
           </div>
@@ -303,10 +327,7 @@ function PostDetail({ socket, currentUserId, user }) {
         <div className="bg-white p-6 rounded-lg shadow-md">
                      <AddComment 
              postId={post._id} 
-             onCommentAdded={(newComment) => {
-               // Add new comment to state instead of reloading
-               setComments(prevComments => [newComment, ...prevComments]);
-             }}
+             onCommentAdded={handleCommentAdded}
            />
                      <CommentList 
              postId={post._id} 
