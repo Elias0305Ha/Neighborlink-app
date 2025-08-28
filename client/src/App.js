@@ -56,6 +56,38 @@ function AppContent() {
     }
   }, []);
 
+  // Callback to update user state when profile is updated
+  const handleUserProfileUpdate = useCallback(async (updatedUserData) => {
+    // Refresh user data from backend to ensure we have the latest information
+    const token = localStorage.getItem('token');
+    if (token) {
+      try {
+        const response = await fetch('http://localhost:5000/api/v1/auth/me', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const result = await response.json();
+        if (result.success) {
+          setUser(result.data);
+          console.log('User profile refreshed from backend:', result.data);
+        } else {
+          // Fallback to the updated data if backend fetch fails
+          setUser(updatedUserData);
+          console.log('User profile updated with local data:', updatedUserData);
+        }
+      } catch (err) {
+        // Fallback to the updated data if backend fetch fails
+        setUser(updatedUserData);
+        console.log('User profile updated with local data (fallback):', updatedUserData);
+      }
+    } else {
+      // No token, just use the updated data
+      setUser(updatedUserData);
+      console.log('User profile updated with local data (no token):', updatedUserData);
+    }
+  }, []);
+
   // Check for token on app load
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -207,6 +239,16 @@ function AppContent() {
       console.log('Setting up profile picture listener with socket:', socket.id);
       socket.on('profile-picture-updated', (data) => {
         console.log('Profile picture updated received:', data);
+        
+        // Update global user state if it's the current user
+        if (user && user._id === data.userId) {
+          setUser(prevUser => ({
+            ...prevUser,
+            profilePicture: data.profilePicture
+          }));
+          console.log('Updated global user profile picture:', data.profilePicture);
+        }
+        
         // Update posts with new profile picture
         setPosts(prevPosts => {
           console.log('Updating posts for profile picture change');
@@ -238,7 +280,7 @@ function AppContent() {
         socket.off('new-notification');
       };
     }
-  }, [socket]);
+  }, [socket, user]);
 
   // Listen for post updates from other components
   useEffect(() => {
@@ -705,7 +747,7 @@ function AppContent() {
         <Route path="/edit/:postId" element={<EditPost post={editingPost} onPostUpdated={handlePostUpdated} onCancel={() => navigate('/')} />} />
         
         {/* User Profile Route */}
-        <Route path="/profile/:userId" element={<UserProfile currentUserId={user?._id} user={user} socket={socket} />} />
+        <Route path="/profile/:userId" element={<UserProfile currentUserId={user?._id} user={user} socket={socket} onProfileUpdate={handleUserProfileUpdate} />} />
         
         {/* Community Route */}
         <Route path="/community" element={

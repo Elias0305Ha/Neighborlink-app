@@ -30,18 +30,14 @@ const createComment = async (req, res) => {
     const userConnections = req.app.get('userConnections');
     await notifyNewComment(comment, io, userConnections);
 
-    // Also emit real-time comment update
-    if (io && userConnections) {
-      const postOwnerSocketId = userConnections.get(post.createdBy.toString());
-      
-      if (postOwnerSocketId) {
-        io.to(postOwnerSocketId).emit('new-comment', {
-          ...comment.toObject(),
-          postId: postId,
-          user: { username: comment.createdBy.name }
-        });
-        console.log(`Notified post owner ${post.createdBy} about new comment`);
-      }
+    // Broadcast to all listeners so any user viewing the post updates in real-time
+    if (io) {
+      io.emit('new-comment', {
+        ...comment.toObject(),
+        postId: postId,
+        user: { username: comment.createdBy.name }
+      });
+      console.log(`Broadcasted new comment to all clients`);
     }
 
     res.status(201).json({

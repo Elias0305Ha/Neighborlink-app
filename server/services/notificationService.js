@@ -115,22 +115,34 @@ const notifyAssignmentStatusChanged = async (assignment, oldStatus, newStatus, i
 
 // Notification for new comments
 const notifyNewComment = async (comment, io, userConnections) => {
-  // Don't notify if user is commenting on their own post
-  if (comment.post.createdBy.toString() === comment.createdBy.toString()) {
+  // Normalize IDs safely whether populated or not
+  const postOwnerId = (comment.post && comment.post.createdBy && comment.post.createdBy._id)
+    ? comment.post.createdBy._id.toString()
+    : (comment.post && comment.post.createdBy)
+      ? comment.post.createdBy.toString()
+      : null;
+  const commenterId = (comment.createdBy && comment.createdBy._id)
+    ? comment.createdBy._id.toString()
+    : (comment.createdBy)
+      ? comment.createdBy.toString()
+      : null;
+
+  // Don't notify if user is commenting on their own post or IDs missing
+  if (!postOwnerId || !commenterId || postOwnerId === commenterId) {
     return null;
   }
-  
+
   const notificationData = {
-    recipient: comment.post.createdBy,
-    sender: comment.createdBy,
+    recipient: postOwnerId,
+    sender: commenterId,
     type: 'new_comment',
-    post: comment.post._id,
+    post: (comment.post && comment.post._id) ? comment.post._id : comment.post,
     comment: comment._id,
-    message: `${comment.createdBy.name} commented on your post "${comment.post.title}"`,
+    message: `${(comment.createdBy && comment.createdBy.name) ? comment.createdBy.name : 'Someone'} commented on your post "${(comment.post && comment.post.title) ? comment.post.title : ''}"`,
     data: {
       commentId: comment._id,
-      postId: comment.post._id,
-      commentContent: comment.content.substring(0, 100) // First 100 chars
+      postId: (comment.post && comment.post._id) ? comment.post._id : comment.post,
+      commentContent: (comment.text || '').substring(0, 100) // First 100 chars, null-safe
     }
   };
   

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 
-function UserProfile({ currentUserId, user, socket }) {
+function UserProfile({ currentUserId, user, socket, onProfileUpdate }) {
   const [profileUser, setProfileUser] = useState(null);
   const [userPosts, setUserPosts] = useState([]);
   const [userComments, setUserComments] = useState([]);
@@ -169,6 +169,12 @@ function UserProfile({ currentUserId, user, socket }) {
       if (result.success) {
         // Update local state
         setProfileUser(result.data);
+        
+        // Update global user state if callback is provided
+        if (onProfileUpdate) {
+          onProfileUpdate(result.data);
+        }
+        
         setShowImageUpload(false);
         setSelectedImage(null);
         setImagePreview('');
@@ -235,6 +241,11 @@ function UserProfile({ currentUserId, user, socket }) {
       if (result.success) {
         // Update local state immediately
         setProfileUser(result.data);
+        
+        // Update global user state if callback is provided
+        if (onProfileUpdate) {
+          onProfileUpdate(result.data);
+        }
         
         // Close modal immediately
         setShowEditProfile(false);

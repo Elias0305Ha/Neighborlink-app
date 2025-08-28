@@ -230,129 +230,137 @@ const MyAssignments = ({ user, socket }) => {
       {/* Assignments Grid */}
       {filteredAssignments.length > 0 && (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredAssignments.map((assignment) => (
-            <div key={assignment._id} className="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow duration-200 overflow-hidden">
-              {/* Header */}
-              <div className="p-6 border-b border-gray-100">
-                <div className="flex items-start justify-between mb-3">
-                  <h4 className="font-semibold text-gray-900 text-lg leading-tight line-clamp-2">
-                    {assignment.post.title}
-                  </h4>
-                  {getStatusBadge(assignment.status)}
-                </div>
-                <p className="text-sm text-gray-600 line-clamp-3 mb-3">
-                  {assignment.post.description}
-                </p>
-                <div className="flex items-center text-xs text-gray-500">
-                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  {new Date(assignment.createdAt).toLocaleDateString()}
-                </div>
-              </div>
-
-              {/* Content */}
-              <div className="p-6">
-                <div className="mb-4">
-                  <p className="text-sm text-gray-700 mb-2">
-                    <span className="font-medium text-gray-900">Your message:</span>
-                  </p>
-                  <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg border">
-                    {assignment.message}
-                  </p>
-                </div>
-
-                <div className="mb-4">
-                  <p className="text-sm text-gray-600 bg-blue-50 p-3 rounded-lg border border-blue-100">
-                    <span className="font-medium text-blue-900">Status:</span> {getStatusDescription(assignment.status)}
-                  </p>
-                </div>
-
-                {/* Action Buttons */}
-                {assignment.status === 'approved' && (
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      onClick={() => setSelectedChatAssignment(assignment)}
-                      className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-sm hover:shadow-md flex items-center justify-center space-x-2"
-                    >
-                      <MessageCircle className="w-4 h-4" />
-                      <span>💬 Chat</span>
-                    </button>
-                    <button
-                      onClick={() => handleStatusUpdate(assignment._id, 'in_progress')}
-                      className="flex-1 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200 shadow-sm hover:shadow-md"
-                    >
-                      🚀 Start
-                    </button>
-                    <button
-                      onClick={() => handleStatusUpdate(assignment._id, 'cancelled')}
-                      className="flex-1 px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all duration-200 shadow-sm hover:shadow-md"
-                    >
-                      ❌ Cancel
-                    </button>
+          {filteredAssignments.map((assignment) => {
+            // Skip assignments with missing post data
+            if (!assignment.post) {
+              console.warn('Assignment missing post data:', assignment);
+              return null;
+            }
+            
+            return (
+              <div key={assignment._id} className="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow duration-200 overflow-hidden">
+                {/* Header */}
+                <div className="p-6 border-b border-gray-100">
+                  <div className="flex items-start justify-between mb-3">
+                    <h4 className="font-semibold text-gray-900 text-lg leading-tight line-clamp-2">
+                      {assignment.post.title}
+                    </h4>
+                    {getStatusBadge(assignment.status)}
                   </div>
-                )}
-
-                {assignment.status === 'in_progress' && (
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      onClick={() => setSelectedChatAssignment(assignment)}
-                      className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-sm hover:shadow-md flex items-center justify-center space-x-2"
-                    >
-                      <MessageCircle className="w-4 h-4" />
-                      <span>💬 Chat</span>
-                    </button>
-                    <button
-                      onClick={() => handleStatusUpdate(assignment._id, 'completed')}
-                      className="flex-1 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200 shadow-sm hover:shadow-md"
-                    >
-                      ✅ Complete
-                    </button>
-                    <button
-                      onClick={() => handleStatusUpdate(assignment._id, 'cancelled')}
-                      className="flex-1 px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all duration-200 shadow-sm hover:shadow-md"
-                    >
-                      ❌ Cancel
-                    </button>
+                  <p className="text-sm text-gray-600 line-clamp-3 mb-3">
+                    {assignment.post.description}
+                  </p>
+                  <div className="flex items-center text-xs text-gray-500">
+                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    {new Date(assignment.createdAt).toLocaleDateString()}
                   </div>
-                )}
+                </div>
 
-                {assignment.status === 'completed' && (
-                  <div className="text-sm text-gray-600 bg-green-50 p-3 rounded-lg border border-green-100">
-                    <p className="font-medium text-green-900 mb-2">
-                      🎉 Completed on {new Date(assignment.completedAt || assignment.updatedAt).toLocaleDateString()}
+                {/* Content */}
+                <div className="p-6">
+                  <div className="mb-4">
+                    <p className="text-sm text-gray-700 mb-2">
+                      <span className="font-medium text-gray-900">Your message:</span>
                     </p>
-                    {assignment.rating && (
-                      <div className="mt-3">
-                        <div className="flex items-center space-x-1 mb-2">
-                          {[1, 2, 3, 4, 5].map((star) => (
-                            <svg
-                              key={star}
-                              className={`w-4 h-4 ${star <= assignment.rating ? 'text-yellow-400' : 'text-gray-300'}`}
-                              fill="currentColor"
-                              viewBox="0 0 20 20"
-                            >
-                              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                            </svg>
-                          ))}
-                          <span className="ml-2 text-green-800 font-medium">{assignment.rating}/5</span>
-                        </div>
-                        {assignment.review && (
-                          <p className="text-green-800 italic">"{assignment.review}"</p>
-                        )}
-                      </div>
-                    )}
+                    <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg border">
+                      {assignment.message}
+                    </p>
                   </div>
-                )}
 
-                {assignment.status === 'cancelled' && (
-                  <div className="text-sm text-gray-600 bg-red-50 p-3 rounded-lg border border-red-100">
-                    <p className="font-medium text-red-900">❌ This assignment was cancelled</p>
+                  <div className="mb-4">
+                    <p className="text-sm text-gray-600 bg-blue-50 p-3 rounded-lg border border-blue-100">
+                      <span className="font-medium text-blue-900">Status:</span> {getStatusDescription(assignment.status)}
+                    </p>
                   </div>
-                )}
+
+                  {/* Action Buttons */}
+                  {assignment.status === 'approved' && (
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => setSelectedChatAssignment(assignment)}
+                        className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-sm hover:shadow-md flex items-center justify-center space-x-2"
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                        <span>💬 Chat</span>
+                      </button>
+                      <button
+                        onClick={() => handleStatusUpdate(assignment._id, 'in_progress')}
+                        className="flex-1 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200 shadow-sm hover:shadow-md"
+                      >
+                        🚀 Start
+                      </button>
+                      <button
+                        onClick={() => handleStatusUpdate(assignment._id, 'cancelled')}
+                        className="flex-1 px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all duration-200 shadow-sm hover:shadow-md"
+                      >
+                        ❌ Cancel
+                      </button>
+                    </div>
+                  )}
+
+                  {assignment.status === 'in_progress' && (
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => setSelectedChatAssignment(assignment)}
+                        className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-sm hover:shadow-md flex items-center justify-center space-x-2"
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                        <span>💬 Chat</span>
+                      </button>
+                      <button
+                        onClick={() => handleStatusUpdate(assignment._id, 'completed')}
+                        className="flex-1 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200 shadow-sm hover:shadow-md"
+                      >
+                        ✅ Complete
+                      </button>
+                      <button
+                        onClick={() => handleStatusUpdate(assignment._id, 'cancelled')}
+                        className="flex-1 px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all duration-200 shadow-sm hover:shadow-md"
+                      >
+                        ❌ Cancel
+                      </button>
+                    </div>
+                  )}
+
+                  {assignment.status === 'completed' && (
+                    <div className="text-sm text-gray-600 bg-green-50 p-3 rounded-lg border border-green-100">
+                      <p className="font-medium text-green-900 mb-2">
+                        🎉 Completed on {new Date(assignment.completedAt || assignment.updatedAt).toLocaleDateString()}
+                      </p>
+                      {assignment.rating && (
+                        <div className="mt-3">
+                          <div className="flex items-center space-x-1 mb-2">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <svg
+                                key={star}
+                                className={`w-4 h-4 ${star <= assignment.rating ? 'text-yellow-400' : 'text-gray-300'}`}
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                              >
+                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                              </svg>
+                            ))}
+                            <span className="ml-2 text-green-800 font-medium">{assignment.rating}/5</span>
+                          </div>
+                          {assignment.review && (
+                            <p className="text-green-800 italic">"{assignment.review}"</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {assignment.status === 'cancelled' && (
+                    <div className="text-sm text-gray-600 bg-red-50 p-3 rounded-lg border border-red-100">
+                      <p className="font-medium text-red-900">❌ This assignment was cancelled</p>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

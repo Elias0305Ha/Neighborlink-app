@@ -14,6 +14,19 @@ function PostDetail({ socket, currentUserId, user }) {
   const [assignments, setAssignments] = useState([]);
   const { postId } = useParams();
   const navigate = useNavigate();
+  const fetchComments = useCallback(async () => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/v1/comments/post/${postId}`);
+      const result = await response.json();
+      if (result.success) {
+        setComments(result.data);
+      } else {
+        setComments([]);
+      }
+    } catch (err) {
+      setComments([]);
+    }
+  }, [postId]);
 
   // Fetch post details
   const fetchPost = useCallback(async () => {
@@ -53,8 +66,9 @@ function PostDetail({ socket, currentUserId, user }) {
   useEffect(() => {
     if (postId) {
       fetchPost();
+      fetchComments();
     }
-  }, [postId, fetchPost]);
+  }, [postId, fetchPost, fetchComments]);
 
   // Listen for post updates from other components
   useEffect(() => {

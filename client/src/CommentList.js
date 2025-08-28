@@ -67,7 +67,14 @@ function CommentList({ postId, currentUserId, onCommentAdded, socket, post, comm
     // Listen for new comments
     const handleNewComment = (newComment) => {
       if (newComment.postId === postId) {
-        setComments(prevComments => [newComment, ...prevComments]);
+        // Prevent duplicate comments by checking if comment already exists
+        setComments(prevComments => {
+          const commentExists = prevComments.some(comment => comment._id === newComment._id);
+          if (commentExists) {
+            return prevComments; // Don't add if already exists
+          }
+          return [newComment, ...prevComments];
+        });
         
         // Only show notification if current user OWNS this post (using your existing naming)
         if (currentUserId === post.createdBy._id) {

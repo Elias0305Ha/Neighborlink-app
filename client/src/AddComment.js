@@ -32,13 +32,13 @@ const AddComment = memo(({ postId, onCommentAdded }) => {
 
       const result = await response.json();
       
-      if (result.success) {
+      // Check both response.ok and result.success to handle different server response formats
+      if (response.ok && (result.success || result.data)) {
         setText('');
-        if (onCommentAdded) {
-          onCommentAdded(result.data);
-        }
+        // Don't call onCommentAdded here - let the socket event handle it
+        // This prevents duplicate comments (API response + socket event)
       } else {
-        setError(result.message || 'Failed to add comment');
+        setError(result.message || 'Failed to add comment. Please try again.');
       }
     } catch (err) {
       setError('Error adding comment');

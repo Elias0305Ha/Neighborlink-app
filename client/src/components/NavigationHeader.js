@@ -10,6 +10,18 @@ function NavigationHeader({ user, onLogout, socket }) {
   useEffect(() => {
     console.log('Profile menu state changed:', isProfileMenuOpen);
   }, [isProfileMenuOpen]);
+
+  // Debug user data for profile picture
+  useEffect(() => {
+    if (user) {
+      console.log('NavigationHeader user data:', {
+        name: user.name,
+        email: user.email,
+        profilePicture: user.profilePicture,
+        hasProfilePicture: !!user.profilePicture && user.profilePicture !== 'no-photo.jpg'
+      });
+    }
+  }, [user]);
   const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const navigate = useNavigate();
@@ -260,12 +272,13 @@ function NavigationHeader({ user, onLogout, socket }) {
               >
                 <div className="h-11 w-11 rounded-full overflow-hidden bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-sm ring-2 ring-white shadow-lg">
                   {/* Use the same profile picture logic as posts */}
-                  {user && user.profilePicture ? (
+                  {user && user.profilePicture && user.profilePicture !== 'no-photo.jpg' ? (
                     <img
                       src={`http://localhost:5000${user.profilePicture}`}
                       alt="User avatar"
                       className="h-full w-full object-cover"
                       onError={(e) => { 
+                        console.log('Profile picture failed to load:', user.profilePicture);
                         e.currentTarget.style.display = 'none'; 
                       }}
                       onLoad={() => console.log('Profile picture loaded successfully:', user.profilePicture)}
@@ -286,12 +299,13 @@ function NavigationHeader({ user, onLogout, socket }) {
                     <div className="flex items-center space-x-4">
                       {/* Large Profile Picture */}
                       <div className="h-16 w-16 rounded-full overflow-hidden bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center ring-4 ring-white shadow-lg">
-                        {user && user.profilePicture ? (
+                        {user && user.profilePicture && user.profilePicture !== 'no-photo.jpg' ? (
                           <img
                             src={`http://localhost:5000${user.profilePicture}`}
                             alt="User avatar"
                             className="h-full w-full object-cover cursor-pointer"
                             onError={(e) => { 
+                              console.log('Profile picture failed to load:', user.profilePicture);
                               e.currentTarget.style.display = 'none'; 
                             }}
                             onLoad={() => console.log('Dropdown profile picture loaded successfully:', user.profilePicture)}
