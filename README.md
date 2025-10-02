@@ -2,6 +2,8 @@
 
 A modern, real-time platform that connects neighbors to help each other with daily tasks and build stronger communities.
 
+![Home](docs/screenshots/Home%20Page_1.png)
+
 ## ✨ Features
 
 ### 🆘 Help Request System
@@ -110,7 +112,7 @@ npm --prefix client test -- --watchAll=false
 
 ## 🖼️ Screenshots
 
-![Home](docs/screenshots/Home%20Page_1.png)
+
 ![Posts](docs/screenshots/posts.png)
 ![Assignments](docs/screenshots/assignments%20page.png)
 ![Chats](docs/screenshots/chat1.png)
