@@ -111,14 +111,11 @@ npm --prefix client test -- --watchAll=false
 ## 🖼️ Screenshots
 - Place your screenshots in `docs/screenshots/` (already added). Embedded examples below:
 
-![Login](docs/screenshots/Sign_in%20page.png)
-![Register](docs/screenshots/Register%20Page.png)
 ![Home](docs/screenshots/Home%20Page_1.png)
 ![Posts](docs/screenshots/posts.png)
 ![Assignments](docs/screenshots/assignments%20page.png)
 ![Chats](docs/screenshots/chat1.png)
 ![User Profile](docs/screenshots/user_profile.png)
-![Dropdown](docs/screenshots/dropdown.png)
 
 ## 🔒 Notes on Security & Dev
 - Use a strong `JWT_SECRET` in production
