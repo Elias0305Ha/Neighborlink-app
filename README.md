@@ -109,7 +109,6 @@ npm --prefix client test -- --watchAll=false
 - Routes exist under `/api/v1/users`, `/api/v1/chats`, `/api/v1/notifications`
 
 ## 🖼️ Screenshots
-- Place your screenshots in `docs/screenshots/` (already added). Embedded examples below:
 
 ![Home](docs/screenshots/Home%20Page_1.png)
 ![Posts](docs/screenshots/posts.png)
